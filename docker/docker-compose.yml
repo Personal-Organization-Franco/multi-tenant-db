@@ -9,7 +9,8 @@ services:
       # Database configuration
       POSTGRES_DB: ${POSTGRES_DB:-multi_tenant_db}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # REQUIRED: Set POSTGRES_PASSWORD in .env file - no default for security
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
       # PostgreSQL configuration for development
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=peer"
@@ -67,7 +68,8 @@ services:
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@localhost.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      # REQUIRED: Set PGADMIN_PASSWORD in .env file - no default for security  
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     
