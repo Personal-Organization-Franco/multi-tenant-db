@@ -10,11 +10,63 @@ dependencies = [
     "fastapi[all]==0.116.1",
     "httpx>=0.28.1",
     "pydantic==2.11.7",
+    "pydantic-settings>=2.6.1",
+    "python-dotenv>=1.0.1",
+    "sqlalchemy[asyncio]==2.0.41",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.0",
+    "factory-boy>=3.3.1",
+    "faker>=33.3.0",
+    
+    # Code Quality & Linting
     "ruff>=0.12.7",
-    "sqlalchemy[asyncio]==2.0.41",
+    "mypy>=1.14.0",
+    "bandit[toml]>=1.8.0",
+    "pre-commit>=4.0.1",
+    
+    # Development Tools
+    "watchdog>=6.0.0",
+    "ipython>=8.31.0",
+    "rich>=14.0.0",
+    
+    # Documentation
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.5.51",
+    "mkdocstrings[python]>=0.28.0",
+    
+    # Performance & Profiling
+    "pytest-benchmark>=4.0.0",
+    "memory-profiler>=0.61.0",
 ]
+
+test = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0", 
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.0",
+    "factory-boy>=3.3.1",
+    "faker>=33.3.0",
+    "httpx>=0.28.1",
+]
+
+lint = [
+    "ruff>=0.12.7",
+    "mypy>=1.14.0",
+    "bandit[toml]>=1.8.0",
+]
+
+[project.scripts]
+dev-server = "uvicorn src.multi_tenant_db.main:app --host 0.0.0.0 --port 8000 --reload"
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
@@ -79,3 +131,102 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.mypy]
+# Basic configuration
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_optional = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+
+# Handle imports and modules
+ignore_missing_imports = true
+follow_imports = "silent"
+show_column_numbers = true
+show_error_codes = true
+
+# Exclude paths
+exclude = [
+    "^alembic/",
+    "^tests/fixtures/",
+    "^build/",
+    "^dist/",
+]
+
+[tool.pytest.ini_options]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Async support
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Output and reporting
+addopts = [
+    "--strict-markers",
+    "--strict-config", 
+    "--verbose",
+    "--tb=short",
+    "--cov=src/multi_tenant_db",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+]
+
+# Markers for test organization
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow-running tests",
+    "database: Tests requiring database",
+    "tenant: Multi-tenant specific tests",
+]
+
+# Filters for warnings
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/multi_tenant_db"]
+omit = [
+    "tests/*",
+    "*/migrations/*",
+    "*/alembic/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic"]
+skips = ["B101", "B601"]  # Skip assert_used and shell_injection_process
+
+[tool.bandit.assert_used]
+exclude = ["tests/*"]
