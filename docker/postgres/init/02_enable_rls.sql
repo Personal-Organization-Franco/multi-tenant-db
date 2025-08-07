@@ -5,12 +5,15 @@
 -- Enable RLS on tenants table
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
+-- Force RLS even for table owners and superusers (for testing)
+ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
+
 -- Create function to get current tenant context from session
 CREATE OR REPLACE FUNCTION current_tenant_id()
 RETURNS UUID AS $$
 BEGIN
     -- Get tenant_id from session variable set by application
-    RETURN current_setting('app.tenant_id', true)::UUID;
+    RETURN current_setting('app.current_tenant_id', true)::UUID;
 EXCEPTION
     WHEN OTHERS THEN
         -- Return NULL if not set or invalid
@@ -118,7 +121,7 @@ BEGIN
     END IF;
     
     -- Set the session variable
-    PERFORM set_config('app.tenant_id', tenant_uuid::text, true);
+    PERFORM set_config('app.current_tenant_id', tenant_uuid::text, true);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -126,7 +129,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION clear_tenant_context()
 RETURNS VOID AS $$
 BEGIN
-    PERFORM set_config('app.tenant_id', '', true);
+    PERFORM set_config('app.current_tenant_id', '', true);
 END;
 $$ LANGUAGE plpgsql;
 

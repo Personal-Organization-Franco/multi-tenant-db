@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     jwt_token_expire_minutes: int = 30
 
     # CORS settings
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    cors_origins: str = "http://localhost:3000,http://localhost:8000"
 
     # API settings
     api_v1_prefix: str = "/api/v1"
@@ -70,13 +70,16 @@ class Settings(BaseSettings):
         env_prefix_separator="",
     )
 
-    @field_validator("cors_origins", mode="before")
+
+    @field_validator("cors_origins")
     @classmethod
-    def parse_cors_origins(cls, v: Any) -> list[str]:
-        """Parse CORS origins from string or list."""
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v if isinstance(v, list) else [v] if v else []
+    def validate_cors_origins(cls, v: str) -> str:
+        """Validate CORS origins format."""
+        if not v:
+            return v
+        # Basic validation - ensure no empty strings after splitting
+        origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+        return ",".join(origins)
 
     @field_validator("environment")
     @classmethod
@@ -96,6 +99,11 @@ class Settings(BaseSettings):
         if v_upper not in allowed:
             raise ValueError(f"Log level must be one of: {allowed}")
         return v_upper
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Get CORS origins as a list of strings."""
+        return parse_cors_origins(self.cors_origins)
 
     @property
     def is_development(self) -> bool:

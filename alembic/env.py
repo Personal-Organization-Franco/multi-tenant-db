@@ -24,11 +24,19 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Add your model's MetaData object here for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+import sys
+from pathlib import Path
 
-# For now, set target_metadata to None until we create SQLAlchemy models
-target_metadata = None
+# Add the src directory to sys.path so we can import our models
+src_path = Path(__file__).parent.parent / "src"
+sys.path.insert(0, str(src_path))
+
+# Import models for autogenerate support
+from multi_tenant_db.models.base import Base
+from multi_tenant_db.models.tenant import Tenant  # noqa: F401
+from multi_tenant_db.core.config import get_settings
+
+target_metadata = Base.metadata
 
 # Other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -48,7 +56,15 @@ def run_migrations_offline() -> None:
     Calls to context.execute() here emit the given string to the
     script output.
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Use settings from configuration, fallback to env var for migrations
+    import os
+    try:
+        settings = get_settings()
+        url = str(settings.database_url)
+    except Exception:
+        # Fallback to environment variable during migrations
+        url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:your_secure_password_here@localhost:5432/multi_tenant_db")
+    
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -70,8 +86,20 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in async mode."""
+    # Use settings from configuration, fallback to env var for migrations
+    import os
+    try:
+        settings = get_settings()
+        database_url = str(settings.database_url)
+    except Exception:
+        # Fallback to environment variable during migrations
+        database_url = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:your_secure_password_here@localhost:5432/multi_tenant_db")
+    
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = database_url
+    
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
