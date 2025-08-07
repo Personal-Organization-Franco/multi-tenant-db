@@ -26,9 +26,6 @@ services:
       # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
       
-      # Custom PostgreSQL configuration
-      - ./docker/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      
       # Initialization scripts (optional)
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
       
@@ -37,11 +34,10 @@ services:
     
     command: >
       postgres
-      -c config_file=/etc/postgresql/postgresql.conf
+      -c row_security=on
       -c log_statement=all
       -c log_duration=on
       -c log_min_duration_statement=0
-      -c shared_preload_libraries=''
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-multi_tenant_db}"]

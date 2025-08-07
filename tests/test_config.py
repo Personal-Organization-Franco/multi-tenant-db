@@ -45,12 +45,14 @@ class TestSettings:
             },
         ):
             settings = Settings()
-            expected = [
+            expected_string = "http://localhost:3000,http://localhost:8080,https://example.com"
+            expected_list = [
                 "http://localhost:3000",
                 "http://localhost:8080",
                 "https://example.com",
             ]
-            assert settings.cors_origins == expected
+            assert settings.cors_origins == expected_string
+            assert settings.cors_origins_list == expected_list
 
     def test_invalid_environment_raises_error(self):
         """Test invalid environment value raises validation error."""
