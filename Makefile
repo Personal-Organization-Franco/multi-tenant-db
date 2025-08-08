@@ -73,19 +73,19 @@ dev-server: ## Start development server with hot reload
 
 # Database Management
 db-up: ## Start database services (Docker Compose)
-	docker compose up -d
+	cd docker && docker-compose up -d
 
 db-down: ## Stop database services
-	docker compose down
+	cd docker && docker-compose down
 
 db-reset: ## Reset database (WARNING: destroys all data)
-	docker compose down -v
-	docker compose up -d
+	cd docker && docker-compose down -v
+	cd docker && docker-compose up -d
 	sleep 5
 	$(MAKE) migrate
 
 db-logs: ## Show database logs
-	docker compose logs -f postgres
+	cd docker && docker-compose logs -f postgres
 
 # Database Migrations
 migrate: ## Run database migrations
