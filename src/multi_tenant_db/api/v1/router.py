@@ -7,15 +7,15 @@ for the FastAPI application.
 
 from fastapi import APIRouter
 
-from . import health
+from . import health, tenants
 
 # Create main API v1 router
 api_router = APIRouter()
 
 # Include all endpoint routers
 api_router.include_router(health.router)
+api_router.include_router(tenants.router)
 
 # Future endpoint routers will be added here:
 # api_router.include_router(users.router)
-# api_router.include_router(tenants.router)
 # api_router.include_router(auth.router)

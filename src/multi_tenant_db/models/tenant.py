@@ -6,7 +6,7 @@ for complete tenant data isolation in PostgreSQL.
 """
 
 import enum
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, String, text
@@ -89,7 +89,7 @@ class Tenant(Base, TimestampMixin):
         back_populates="subsidiaries",
     )
     
-    subsidiaries: Mapped[List["Tenant"]] = relationship(
+    subsidiaries: Mapped[list["Tenant"]] = relationship(
         "Tenant",
         back_populates="parent",
         cascade="all, delete",
