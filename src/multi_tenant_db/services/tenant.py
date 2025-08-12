@@ -5,6 +5,8 @@ Implements comprehensive tenant management with proper validation,
 hierarchical relationships, and integration with RLS policies.
 """
 
+
+import logging
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -21,6 +23,8 @@ from ..schemas.tenant import (
     TenantResponse,
     TenantUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class TenantService:
@@ -49,6 +53,15 @@ class TenantService:
             HTTPException: For validation errors or constraint violations
         """
         # Validate parent tenant exists if specified
+        logger.info(
+            "Starting tenant creation",
+            extra={
+                "operation": "create_tenant",
+                "tenant_name": tenant_data.name,
+                "tenant_type": tenant_data.tenant_type.value,
+                "parent_tenant_id": str(tenant_data.parent_tenant_id) if tenant_data.parent_tenant_id else None
+            }
+        )
         if tenant_data.parent_tenant_id:
             parent = await self._get_tenant_by_id(tenant_data.parent_tenant_id)
             if not parent:
@@ -74,7 +87,7 @@ class TenantService:
         tenant = Tenant(
             name=tenant_data.name.strip(),
             parent_tenant_id=tenant_data.parent_tenant_id,
-            tenant_type=tenant_data.tenant_type,
+            tenant_type=tenant_data.tenant_type.value,
             tenant_metadata=tenant_data.metadata or {}
         )
         
@@ -82,6 +95,16 @@ class TenantService:
             self.session.add(tenant)
             await self.session.commit()
             await self.session.refresh(tenant)
+            
+            logger.info(
+                "Tenant created successfully", 
+                extra={
+                    "operation": "create_tenant",
+                    "tenant_id": str(tenant.tenant_id),
+                    "tenant_name": tenant.name,
+                    "tenant_type": tenant.tenant_type
+                }
+            )
         except IntegrityError as e:
             await self.session.rollback()
             if "uq_tenant_name_per_parent" in str(e):
@@ -370,7 +393,21 @@ class TenantService:
                 if parent_tenant_id
                 else "root level"
             )
+            # Create helpful error response
+            suggestion = ""
+            if existing_tenant.tenant_type == "parent":
+                suggestion = f" To create a subsidiary under this parent, use parent_tenant_id: '{existing_tenant.tenant_id}'"
+            
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Tenant name '{name}' already exists under {parent_context}"
+                detail={
+                    "error": "Tenant name already exists",
+                    "message": f"Tenant name '{name}' already exists under {parent_context}",
+                    "existing_tenant": {
+                        "tenant_id": str(existing_tenant.tenant_id),
+                        "name": existing_tenant.name,
+                        "tenant_type": existing_tenant.tenant_type
+                    },
+                    "suggestion": f"Use a different name or{suggestion}" if suggestion else "Use a different name"
+                }
             )

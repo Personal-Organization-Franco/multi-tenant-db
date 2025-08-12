@@ -32,6 +32,7 @@ class TenantBase(BaseModel):
     
     metadata: dict[str, Any] | None = Field(
         default_factory=dict,
+        alias="tenant_metadata",
         description="Additional JSON metadata for flexible storage",
         examples=[{
             "country": "Hong Kong",

@@ -5,13 +5,67 @@ Provides structured logging configuration with tenant context
 and proper log formatting for different environments.
 """
 
+import json
 import logging
 import sys
+from datetime import datetime
 from typing import Any
 
 from .config import get_settings
 
 settings = get_settings()
+
+
+class JSONFormatter(logging.Formatter):
+    """
+    JSON formatter for structured logging.
+    
+    Formats log records as JSON objects with consistent structure
+    for better parsing and monitoring.
+    """
+    
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record as JSON."""
+        # Create base log structure
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+        }
+        
+        # Add tenant context if available
+        if hasattr(record, 'tenant_id'):
+            log_data["tenant_id"] = record.tenant_id
+            
+        # Add request context if available  
+        if hasattr(record, 'request_id'):
+            log_data["request_id"] = record.request_id
+            
+        # Add exception info if present
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+            
+        # Add any extra fields
+        for key, value in record.__dict__.items():
+            if key not in {
+                'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
+                'filename', 'module', 'lineno', 'funcName', 'created',
+                'msecs', 'relativeCreated', 'thread', 'threadName',
+                'processName', 'process', 'message', 'exc_info', 'exc_text',
+                'stack_info', 'tenant_id', 'request_id'
+            }:
+                # Only include extra fields that are JSON serializable
+                try:
+                    json.dumps(value)
+                    log_data[key] = value
+                except (TypeError, ValueError):
+                    log_data[key] = str(value)
+        
+        return json.dumps(log_data, default=str)
 
 
 def setup_logging() -> None:
@@ -21,12 +75,27 @@ def setup_logging() -> None:
     Sets up logging configuration based on environment settings
     with proper formatting and log levels.
     """
+    # Create handler
+    handler = logging.StreamHandler(sys.stdout)
+    
+    # Choose formatter based on configuration
+    if settings.log_json:
+        formatter = JSONFormatter()
+    else:
+        formatter = logging.Formatter(settings.log_format)
+    
+    handler.setFormatter(formatter)
+    
     # Configure root logger
-    logging.basicConfig(
-        level=getattr(logging, settings.log_level),
-        format=settings.log_format,
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, settings.log_level))
+    
+    # Remove any existing handlers
+    for existing_handler in root_logger.handlers[:]:
+        root_logger.removeHandler(existing_handler)
+    
+    # Add our JSON handler
+    root_logger.addHandler(handler)
 
     # Configure specific loggers for different components
     loggers = {

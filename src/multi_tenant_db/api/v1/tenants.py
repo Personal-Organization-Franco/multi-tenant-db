@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from ...core.deps import TenantDBSession
+from ...core.deps import DBSession
 from ...models.tenant import TenantType
 from ...schemas.tenant import (
     TenantCreate,
@@ -39,7 +39,7 @@ router = APIRouter(
 
 
 @router.post(
-    "",
+    "/",
     response_model=TenantResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create new tenant",
@@ -51,7 +51,7 @@ router = APIRouter(
 )
 async def create_tenant(
     tenant_data: TenantCreate,
-    db: TenantDBSession,
+    db: DBSession,
 ) -> TenantResponse:
     """
     Create a new tenant with comprehensive validation.
@@ -63,12 +63,13 @@ async def create_tenant(
     
     Returns the created tenant with generated ID and timestamps.
     """
+    
     service = TenantService(db)
     return await service.create_tenant(tenant_data)
 
 
 @router.get(
-    "",
+    "/",
     response_model=TenantListResponse,
     summary="List tenants with pagination",
     description=(
@@ -77,7 +78,7 @@ async def create_tenant(
     )
 )
 async def list_tenants(
-    db: TenantDBSession,
+    db: DBSession,
     limit: int = Query(
         default=100,
         ge=1,

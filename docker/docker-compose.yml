@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
       # PostgreSQL configuration for development
-      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=peer"
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
       
       # Timezone configuration
       TZ: ${TZ:-UTC}
@@ -26,8 +26,11 @@ services:
       # Persistent data storage
       - postgres_data:/var/lib/postgresql/data
       
+      # Custom PostgreSQL configuration
+      # - ./postgres/pg_hba.conf:/var/lib/postgresql/data/pg_hba.conf
+      
       # Initialization scripts (optional)
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
       
       # Shared memory for PostgreSQL
       - /dev/shm:/dev/shm
@@ -38,6 +41,7 @@ services:
       -c log_statement=all
       -c log_duration=on
       -c log_min_duration_statement=0
+      -c hba_file=/var/lib/postgresql/data/pg_hba.conf
     
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-multi_tenant_db}"]
