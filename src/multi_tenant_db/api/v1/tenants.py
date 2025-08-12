@@ -9,7 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Query, status
 
-from ...core.deps import DBSession
+from ...core.deps import DBSession, TenantDBSession
 from ...models.tenant import TenantType
 from ...schemas.tenant import (
     TenantCreate,
