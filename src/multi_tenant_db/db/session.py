@@ -65,26 +65,30 @@ async def get_tenant_session(tenant_id: str) -> AsyncGenerator[AsyncSession]:
     """
     Create database session with tenant context for Row Level Security.
 
-    Sets the tenant_id in the PostgreSQL session using SET LOCAL,
-    which enables Row Level Security policies to filter data
+    Sets the tenant_id in the PostgreSQL session using the secure
+    set_tenant_context() function, which validates the tenant exists
+    and enables Row Level Security policies to filter data
     automatically for the specified tenant.
 
     Args:
-        tenant_id: The tenant identifier to set in session context
+        tenant_id: The tenant identifier (UUID) to set in session context
 
     Yields:
         AsyncSession: Database session with tenant context
 
+    Raises:
+        ProgrammingError: If tenant_id is not a valid UUID or tenant doesn't exist
+
     Example:
-        async with get_tenant_session("tenant123") as session:
-            # All queries in this session will be filtered by tenant123
-            result = await session.execute(select(User))
+        async with get_tenant_session("550e8400-e29b-41d4-a716-446655440000") as session:
+            # All queries in this session will be filtered by the tenant
+            result = await session.execute(select(Tenant))
     """
     async with SessionLocal() as session:
         try:
-            # Set tenant context for RLS
+            # Set tenant context for RLS using the secure PostgreSQL function
             await session.execute(
-                text("SET LOCAL app.current_tenant_id = :tenant_id"),
+                text("SELECT set_tenant_context(:tenant_id)"),
                 {"tenant_id": tenant_id},
             )
             yield session
@@ -100,15 +104,34 @@ async def set_tenant_context(session: AsyncSession, tenant_id: str) -> None:
     Set tenant context in existing session for Row Level Security.
 
     This function can be used to set tenant context in an existing
-    session, typically in middleware or dependency injection.
+    session, typically in middleware or dependency injection. Uses the
+    secure PostgreSQL set_tenant_context() function which validates
+    the tenant exists before setting the session context.
 
     Args:
         session: Existing database session
-        tenant_id: The tenant identifier to set in session context
+        tenant_id: The tenant identifier (UUID) to set in session context
+
+    Raises:
+        ProgrammingError: If tenant_id is not a valid UUID or tenant doesn't exist
     """
     await session.execute(
-        text("SET LOCAL app.current_tenant_id = :tenant_id"), {"tenant_id": tenant_id}
+        text("SELECT set_tenant_context(:tenant_id)"), {"tenant_id": tenant_id}
     )
+
+
+async def clear_tenant_context(session: AsyncSession) -> None:
+    """
+    Clear tenant context from existing session.
+
+    This function clears the tenant context, which can be useful
+    for testing or administrative operations that require
+    unrestricted access to data.
+
+    Args:
+        session: Existing database session
+    """
+    await session.execute(text("SELECT clear_tenant_context()"))
 
 
 async def get_current_tenant_id(session: AsyncSession) -> str | None:

@@ -87,6 +87,9 @@ db-reset: ## Reset database (WARNING: destroys all data)
 db-logs: ## Show database logs
 	cd docker && docker-compose logs -f postgres
 
+db-validate: ## Validate database functions and RLS policies
+	uv run python scripts/validate_db_functions.py
+
 # Database Migrations
 migrate: ## Run database migrations
 	uv run alembic upgrade head
@@ -132,7 +135,7 @@ env-copy: ## Copy .env.example to .env
 	@echo "Copied .env.example to .env - remember to update values!"
 
 # Development Workflow Shortcuts
-setup: clean install-dev env-copy db-up migrate pre-commit-install ## Full development environment setup
+setup: clean install-dev env-copy db-up migrate db-validate pre-commit-install ## Full development environment setup
 	@echo "✅ Development environment ready!"
 	@echo "Run 'make dev-server' to start the application"
 
