@@ -51,8 +51,9 @@ class Settings(BaseSettings):
     openapi_url: str | None = "/openapi.json"
 
     # Logging settings
-    log_level: str = "INFO"
+    log_level: str = "DEBUG"
     log_format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    log_json: bool = True
 
     # Multi-tenant settings
     default_tenant_id: str = "default"

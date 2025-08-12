@@ -55,8 +55,19 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return response
+        except HTTPException:
+            # Re-raise HTTPException without logging to preserve status codes
+            # HTTPExceptions should be handled by FastAPI's built-in exception handlers
+            raise
         except Exception as e:
-            logger.error(f"Error processing request for tenant {tenant_id}: {str(e)}")
+            logger.error(
+                f"Unexpected error processing request for tenant {tenant_id}: {str(e)}",
+                extra={
+                    "tenant_id": tenant_id,
+                    "path": request.url.path,
+                    "method": request.method,
+                },
+            )
             raise
 
     async def _extract_tenant_id(self, request: Request) -> str:
@@ -85,6 +96,13 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
 
         # Check if tenant ID is required
         if not tenant_id and settings.require_tenant_header:
+            # Debug logging to see what we're getting
+            if settings.debug:
+                logger.debug(
+                    f"No tenant_id found. Method: {request.method}, "
+                    f"Path: {request.url.path}"
+                )
+            
             # Skip requirement for health and docs endpoints
             skip_paths = [
                 "/health",
@@ -93,7 +111,31 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
                 "/openapi.json",
                 "/api/v1/health",
             ]
-            if not any(request.url.path.startswith(path) for path in skip_paths):
+            
+            # Allow tenant management operations without tenant ID
+            # POST /api/v1/tenants - tenant creation
+            # GET /api/v1/tenants - list all tenants (administrative function)
+            is_tenant_admin_operation = (
+                (request.method in ["POST", "GET"]) and 
+                (
+                    request.url.path == "/api/v1/tenants" or
+                    request.url.path == "/api/v1/tenants/"
+                )
+            )
+            
+            # Debug logging for tenant admin operations
+            if settings.debug:
+                logger.debug(f"is_tenant_admin_operation: {is_tenant_admin_operation}")
+            
+            should_skip = (
+                any(request.url.path.startswith(path) for path in skip_paths) 
+                or is_tenant_admin_operation
+            )
+            
+            if settings.debug:
+                logger.debug(f"should_skip: {should_skip}")
+                
+            if not should_skip:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Missing tenant identifier. "

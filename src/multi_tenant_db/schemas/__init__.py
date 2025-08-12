@@ -3,11 +3,11 @@
 from .tenant import (
     TenantBase,
     TenantCreate,
-    TenantUpdate,
-    TenantResponse,
+    TenantDeleteResponse,
     TenantListItem,
     TenantListResponse,
-    TenantDeleteResponse,
+    TenantResponse,
+    TenantUpdate,
 )
 
 __all__ = [

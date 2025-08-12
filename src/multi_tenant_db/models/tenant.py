@@ -6,11 +6,13 @@ for complete tenant data isolation in PostgreSQL.
 """
 
 import enum
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 from uuid import UUID, uuid4
 
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Index, String, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgresUUID
+from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -29,6 +31,10 @@ class TenantType(str, enum.Enum):
     
     PARENT = "parent"
     SUBSIDIARY = "subsidiary"
+    
+    def __str__(self) -> str:
+        """Return the enum value for string conversion."""
+        return self.value
 
 
 class Tenant(Base, TimestampMixin):
@@ -60,7 +66,7 @@ class Tenant(Base, TimestampMixin):
     )
     
     # Self-referencing foreign key for hierarchy
-    parent_tenant_id: Mapped[Optional[UUID]] = mapped_column(
+    parent_tenant_id: Mapped[UUID | None] = mapped_column(
         PostgresUUID(as_uuid=True),
         ForeignKey("tenants.tenant_id", ondelete="RESTRICT"),
         nullable=True,
@@ -69,13 +75,14 @@ class Tenant(Base, TimestampMixin):
     
     # Tenant type
     tenant_type: Mapped[TenantType] = mapped_column(
-        Enum(TenantType, name="tenant_type"),
+        ENUM(*[e.value for e in TenantType], name="tenant_type", create_type=False),
         nullable=False,
         comment="Type of tenant: parent (top-level) or subsidiary",
     )
     
     # Additional metadata as JSON
-    tenant_metadata: Mapped[Optional[dict]] = mapped_column(
+    tenant_metadata: Mapped[dict | None] = mapped_column(
+        "metadata",  # Map to actual database column name
         JSONB,
         nullable=True,
         default=dict,
@@ -106,7 +113,7 @@ class Tenant(Base, TimestampMixin):
             unique=True,
         ),
         
-        # Business logic constraint: parent tenants have no parent, subsidiaries have parent
+        # Parent tenants have no parent, subsidiaries have parent
         CheckConstraint(
             "(tenant_type = 'parent' AND parent_tenant_id IS NULL) OR "
             "(tenant_type = 'subsidiary' AND parent_tenant_id IS NOT NULL)",
@@ -129,12 +136,15 @@ class Tenant(Base, TimestampMixin):
         Index("ix_tenant_parent_id", "parent_tenant_id"),
         Index("ix_tenant_type", "tenant_type"),
         Index("ix_tenant_name_lower", text("lower(name)")),
-        Index("ix_tenant_metadata", "tenant_metadata", postgresql_using="gin"),
+        Index("ix_tenant_metadata", "metadata", postgresql_using="gin"),
     )
     
     def __repr__(self) -> str:
         """String representation of the tenant."""
-        return f"<Tenant(id={self.tenant_id}, name='{self.name}', type={self.tenant_type})>"
+        return (
+            f"<Tenant(id={self.tenant_id}, name='{self.name}', "
+            f"type={self.tenant_type})>"
+        )
     
     def __str__(self) -> str:
         """Human-readable string representation."""
