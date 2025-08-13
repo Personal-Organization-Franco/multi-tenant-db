@@ -209,7 +209,12 @@ async def tenant_isolation_health_check(db: DBSession) -> dict[str, Any]:
 @router.get("/readiness", status_code=status.HTTP_200_OK)
 async def readiness_check() -> dict[str, Any]:
     """Kubernetes readiness check."""
-    db_ready = await test_database_connection()
+    try:
+        db_ready = await test_database_connection()
+    except Exception:
+        # If connection test fails with exception, we're not ready
+        db_ready = False
+    
     return {
         "status": "ready" if db_ready else "not_ready",
         "timestamp": datetime.now(timezone.utc).isoformat(),
